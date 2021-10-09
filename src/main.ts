@@ -1,6 +1,8 @@
-import type {
+import {
+  enterQuery,
   //@ts-ignore
   IWorld,
+  removeEntity,
 } from 'bitecs';
 import {
   mat2d,
@@ -17,7 +19,7 @@ import {
 } from 'bitecs';
 import {
   Renderer,
-  Sprite
+  Sprite,
 } from 'pixi.js';
 import imgBunny from './bunny.png';
 import sndJump from './jump.wav';
@@ -38,6 +40,9 @@ const CTransform = defineComponent({
 const CGravity = defineComponent();
 const CSprite = defineComponent({
   spriteId: Types.ui16,
+});
+const CSource = defineComponent({
+  sourceId: Types.ui16,
 });
 
 /* SYSTEMS.TIME */
@@ -83,6 +88,31 @@ const drawSystem = (world: IWorld): IWorld => {
   return world;
 }
 
+/* SYSTEMS.AUDIO */
+interface IWorld {
+  audio: {
+    context: AudioContext,
+    sourceIds: Map<string, number>,
+    sources: Map<number, AudioBuffer>,
+  }
+};
+const sourceQuery = defineQuery([CSource]);
+const newSourceQuery = enterQuery(sourceQuery);
+const audioSystem = (world: IWorld): IWorld => {
+  const { audio: { context: audioContext, sources }} = world;
+  for (let eid of newSourceQuery(world)) {
+    const sourceId = CSource.sourceId[eid];
+    const audioBuffer = sources.get(sourceId)!;
+    const bufferSource = audioContext.createBufferSource();
+    bufferSource.buffer = audioBuffer;
+    bufferSource.connect(world.audio.context.destination);
+    bufferSource.start();
+    removeEntity(world, eid);
+  }
+  return world;
+}
+
+
 /* SYSTEMS.MOVEMENT */
 const movementQuery = defineQuery([CTransform, CVelocity]);
 const movementSystem = (world: IWorld): IWorld => {
@@ -99,6 +129,9 @@ const movementSystem = (world: IWorld): IWorld => {
     }
     if (localTransform[5] >= (400 - 37)) {
       velocity[1] = -Math.abs(velocity[1]);
+      const newEid = addEntity(world);
+      addComponent(world, CSource, newEid);
+      CSource.sourceId[newEid] = world.audio.sourceIds.get(sndJump)!;
     }
   }
   return world
@@ -137,6 +170,22 @@ world.renderer = new Renderer(
     height: 400,
   }
 );
+world.audio = {
+  context: new AudioContext(),
+  sourceIds: new Map(),
+  sources: new Map(),
+};
+let nextSourceId = 0;
+const getId = () => nextSourceId++
+const createSource = async (path: string): Promise<void> => {
+  const response = await fetch(path)
+  const id = getId();
+  const buffer = await response.arrayBuffer();
+  const decodedBuffer = await world.audio.context.decodeAudioData(buffer); 
+  world.audio.sourceIds.set(path, id);
+  world.audio.sources.set(id, decodedBuffer);
+}
+await createSource(sndJump);
 const sprite = Sprite.from(imgBunny);
 sprites.set(sprite.texture.baseTexture.uid, sprite);
 for (let i = 0; i <= 100; i++) {
@@ -159,10 +208,14 @@ const update = pipe(
   movementSystem,
 )
 const render = pipe(
+  audioSystem,
   drawSystem,
 )
 let alive = true;
-setTimeout(() => alive = false, 10_000);
+setTimeout(() => {
+  console.log('stopping')
+  alive = false
+}, 10_000);
 const main: FrameRequestCallback = () => {
   timeSystem(world);
   while (world.time.updateTimeLeft >= world.time.updateDelta) {
