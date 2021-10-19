@@ -15,78 +15,64 @@ import {
 } from 'gl-matrix';
 import {
   Renderer,
-  Sprite,
 } from 'pixi.js';
+import { audioSystem, createSource, getSourceId, IWorldAudio } from './audio';
 import imgBunny from './bunny.png';
+import { CSource, CSprite, CTransform2d } from './components';
 import sndJump from './jump.wav';
+import { createSprite, drawSystem, getSpriteId, IWorldRenderer } from './renderer2d';
 import './style.css'
-import { CAction, CSource, CSprite, CTransform2d } from './components';
-import { audioSystem, IWorldAudio } from './audio';
-import { drawSystem, IWorldRenderer } from './renderer2d';
 import { IWorldTime, timeSystem } from './time';
-import { bootstrapInputSystem, IWorldInput } from './input';
 
-const app = document.querySelector<HTMLDivElement>('#app')!;
-app.innerHTML = `<canvas tabindex='1'></canvas>`;
+const element = document.querySelector<HTMLDivElement>('#app')!;
+element.innerHTML = `<canvas tabindex='1'></canvas>`;
 const canvas = document.querySelector<HTMLCanvasElement>('canvas')!;
-
-/* WORLD */
-const world = createWorld() as IWorld & IWorldTime & IWorldRenderer & IWorldAudio & IWorldInput;
-world.time = {
-  elapsed: 0,
-  updateTimeLeft: 0,
-  updateDelta: 16 / 1000,
-  then: performance.now() / 1000,
-};
-const sprites: Map<number, Sprite> = new Map();
-const renderer = new Renderer({
-  clearBeforeRender: false,
-  view: canvas,
-  width: 600,
-  height: 400,
-});
-world.renderer2d = {
-  renderer,
-  camera: {},
-  sprite: {
-    getSprite: (spriteId: number): Sprite => {
-      return sprites.get(spriteId)!;
-    }
-  }
-};
-world.audio = {
-  context: new AudioContext(),
-  sourceIds: new Map(),
-  sources: new Map(),
-};
-const ACTIONS = {
-  PLAY_SOUND: 0,
-} as const;
-world.input = {
-  mappings: {
-    'Space': ACTIONS.PLAY_SOUND,
-  },
-};
 
 /* COMPONENTS */
 const CVelocity2d = defineComponent({
   vec2: [Types.f32, 2],
 });
 const CGravity = defineComponent();
+export const CAction = defineComponent({ action: Types.ui16 });
+
+/* WORLD & CONFIG */
+const world = createWorld() as IWorld & IWorldTime & IWorldRenderer & IWorldAudio;
+world.time = {
+  elapsed: 0,
+  updateTimeLeft: 0,
+  updateDelta: 16 / 1000,
+  then: performance.now() / 1000,
+};
+world.renderer2d = {
+  renderer: new Renderer({
+    clearBeforeRender: false,
+    view: canvas,
+    width: 600,
+    height: 400,
+  }),
+  camera: {},
+  sprites: {
+    idToSprite: {},
+    pathToId: {},
+  },
+};
+world.audio = {
+  context: new AudioContext(),
+  sources: {
+    idToSource: {},
+    pathToId: {},
+  },
+};
+const ACTIONS = Object.freeze({
+  JUMP: 0,
+});
+const inputActions: Record<KeyboardEvent["code"], number> = {
+  'Space': ACTIONS.JUMP,
+};
 
 /* DATA  */
-let nextSourceId = 0;
-const createSource = async (path: string): Promise<void> => {
-  const response = await fetch(path)
-  const id = nextSourceId++;
-  const buffer = await response.arrayBuffer();
-  const decodedBuffer = await world.audio.context.decodeAudioData(buffer); 
-  world.audio.sourceIds.set(path, id);
-  world.audio.sources.set(id, decodedBuffer);
-}
-await createSource(sndJump);
-const sprite = Sprite.from(imgBunny);
-sprites.set(sprite.texture.baseTexture.uid, sprite);
+await createSource(world, sndJump);
+await createSprite(world, imgBunny);
 for (let i = 0; i <= 100; i++) {
   const entityId = addEntity(world);
   addComponent(world, CTransform2d, entityId);
@@ -100,7 +86,7 @@ for (let i = 0; i <= 100; i++) {
   velocity[1] = (Math.random() - 0.5) * 200;
   addComponent(world, CGravity, entityId);
   addComponent(world, CSprite, entityId);
-  CSprite.spriteId[entityId] = sprite.texture.baseTexture.uid;
+  CSprite.spriteId[entityId] = getSpriteId(world, imgBunny);
 }
 
 /* SYSTEMS */
@@ -136,17 +122,12 @@ const gravitySystem = <T extends IWorld & IWorldTime>(world: T): T => {
 
 const actionQuery = defineQuery([CAction]);
 const actionEnter = enterQuery(actionQuery);
-const actionToSoundSystem = <T extends IWorld & IWorldAudio>(world: T): T => {
-  const {
-    audio: {
-      sourceIds,
-    },
-  } = world;
+const actionToSourceSystem = <T extends IWorld & IWorldAudio>(world: T): T => {
   for (const eid of actionEnter(world)) {
-    if (CAction.action[eid] === ACTIONS.PLAY_SOUND) {
+    if (CAction.action[eid] === ACTIONS.JUMP) {
       const newEid = addEntity(world);
       addComponent(world, CSource, newEid);
-      CSource.sourceId[newEid] = sourceIds.get(sndJump)!;
+      CSource.sourceId[newEid] = getSourceId(world, sndJump);
     }
   }
   return world;
@@ -159,8 +140,17 @@ const actionDeleteSystem = <T extends IWorld>(world: T): T => {
   return world;
 }
 
+canvas.addEventListener('keydown', (event) => {
+  if (inputActions[event.code] !== undefined) {
+    const action = inputActions[event.code];
+    const actionEid = addEntity(world);
+    addComponent(world, CAction, actionEid);
+    CAction.action[actionEid] = action;
+  }
+});
+
 const update = pipe(
-  actionToSoundSystem,
+  actionToSourceSystem,
   gravitySystem,
   movementSystem,
   actionDeleteSystem,
@@ -183,7 +173,6 @@ const main: FrameRequestCallback = () => {
     requestAnimationFrame(main);
   }
 };
-bootstrapInputSystem(canvas, world);
 requestAnimationFrame(main);
 
 setTimeout(() => {
