@@ -1,16 +1,18 @@
 import {
+  addComponent,
+  addEntity,
+  createWorld,
+  defineComponent,
   defineQuery,
+  enterQuery,
   IWorld,
+  pipe,
+  removeEntity,
+  Types,
 } from 'bitecs';
 import {
   mat2d, vec2,
 } from 'gl-matrix';
-import {
-  addComponent,
-  addEntity,
-  createWorld,
-  pipe,
-} from 'bitecs';
 import {
   Renderer,
   Sprite,
@@ -18,17 +20,18 @@ import {
 import imgBunny from './bunny.png';
 import sndJump from './jump.wav';
 import './style.css'
-import { CGravity, CSprite, CTransform, CVelocity } from './components';
+import { CAction, CSource, CSprite, CTransform2d } from './components';
 import { audioSystem, IWorldAudio } from './audio';
-import { drawSystem, IWorldRenderer } from './renderer';
+import { drawSystem, IWorldRenderer } from './renderer2d';
 import { IWorldTime, timeSystem } from './time';
+import { bootstrapInputSystem, IWorldInput } from './input';
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
-app.innerHTML = `<canvas></canvas>`;
+app.innerHTML = `<canvas tabindex='1'></canvas>`;
 const canvas = document.querySelector<HTMLCanvasElement>('canvas')!;
 
 /* WORLD */
-const world = createWorld() as IWorld & IWorldTime & IWorldRenderer & IWorldAudio;
+const world = createWorld() as IWorld & IWorldTime & IWorldRenderer & IWorldAudio & IWorldInput;
 world.time = {
   elapsed: 0,
   updateTimeLeft: 0,
@@ -36,13 +39,14 @@ world.time = {
   then: performance.now() / 1000,
 };
 const sprites: Map<number, Sprite> = new Map();
-world.renderer = {
-  renderer: new Renderer({
-    clearBeforeRender: false,
-    view: canvas,
-    width: 600,
-    height: 400,
-  }),
+const renderer = new Renderer({
+  clearBeforeRender: false,
+  view: canvas,
+  width: 600,
+  height: 400,
+});
+world.renderer2d = {
+  renderer,
   camera: {},
   sprite: {
     getSprite: (spriteId: number): Sprite => {
@@ -55,8 +59,22 @@ world.audio = {
   sourceIds: new Map(),
   sources: new Map(),
 };
+const ACTIONS = {
+  PLAY_SOUND: 0,
+} as const;
+world.input = {
+  mappings: {
+    'Space': ACTIONS.PLAY_SOUND,
+  },
+};
 
-/* DATA SETUP */
+/* COMPONENTS */
+const CVelocity2d = defineComponent({
+  vec2: [Types.f32, 2],
+});
+const CGravity = defineComponent();
+
+/* DATA  */
 let nextSourceId = 0;
 const createSource = async (path: string): Promise<void> => {
   const response = await fetch(path)
@@ -71,13 +89,13 @@ const sprite = Sprite.from(imgBunny);
 sprites.set(sprite.texture.baseTexture.uid, sprite);
 for (let i = 0; i <= 100; i++) {
   const entityId = addEntity(world);
-  addComponent(world, CTransform, entityId);
-  mat2d.identity(CTransform.local[entityId]);
-  const localTransform = CTransform.local[entityId];
+  addComponent(world, CTransform2d, entityId);
+  mat2d.identity(CTransform2d.local[entityId]);
+  const localTransform = CTransform2d.local[entityId];
   localTransform[4] = Math.random() * 600;
   localTransform[5] = Math.random() * 200 + 100;
-  addComponent(world, CVelocity, entityId);
-  const velocity = CVelocity.vec2[entityId];
+  addComponent(world, CVelocity2d, entityId);
+  const velocity = CVelocity2d.vec2[entityId];
   velocity[0] = (Math.random() - 0.5) * 200;
   velocity[1] = (Math.random() - 0.5) * 200;
   addComponent(world, CGravity, entityId);
@@ -86,13 +104,13 @@ for (let i = 0; i <= 100; i++) {
 }
 
 /* SYSTEMS */
-const movementQuery = defineQuery([CTransform, CVelocity]);
+const movementQuery = defineQuery([CTransform2d, CVelocity2d]);
 const movementSystem = <T extends IWorld & IWorldTime>(world: T): T => {
   const { time: { updateDelta: dt } } = world;
   const velocityScaled = vec2.create();
   for (let eid of movementQuery(world)) {
-    const localTransform = CTransform.local[eid];
-    const velocity = CVelocity.vec2[eid];
+    const localTransform = CTransform2d.local[eid];
+    const velocity = CVelocity2d.vec2[eid];
     mat2d.translate(localTransform, localTransform, vec2.scale(velocityScaled, velocity, dt));
     if (localTransform[4] >= 600 - 27) {
       velocity[0] = -Math.abs(velocity[0]);
@@ -106,19 +124,46 @@ const movementSystem = <T extends IWorld & IWorldTime>(world: T): T => {
   return world
 }
 
-const gravityQuery = defineQuery([CGravity, CVelocity]);
+const gravityQuery = defineQuery([CGravity, CVelocity2d]);
 const gravitySystem = <T extends IWorld & IWorldTime>(world: T): T => {
   const { time: { updateDelta: dt } } = world;
   for (let eid of gravityQuery(world)) {
-    const velocity = CVelocity.vec2[eid];
+    const velocity = CVelocity2d.vec2[eid];
     velocity[1] += 100 * dt;
   }
   return world
 }
 
+const actionQuery = defineQuery([CAction]);
+const actionEnter = enterQuery(actionQuery);
+const actionToSoundSystem = <T extends IWorld & IWorldAudio>(world: T): T => {
+  const {
+    audio: {
+      sourceIds,
+    },
+  } = world;
+  for (const eid of actionEnter(world)) {
+    if (CAction.action[eid] === ACTIONS.PLAY_SOUND) {
+      const newEid = addEntity(world);
+      addComponent(world, CSource, newEid);
+      CSource.sourceId[newEid] = sourceIds.get(sndJump)!;
+    }
+  }
+  return world;
+}
+
+const actionDeleteSystem = <T extends IWorld>(world: T): T => {
+  for (const eid of actionQuery(world)) {
+    removeEntity(world, eid);
+  }
+  return world;
+}
+
 const update = pipe(
+  actionToSoundSystem,
   gravitySystem,
   movementSystem,
+  actionDeleteSystem,
 )
 const render = pipe(
   audioSystem,
@@ -138,6 +183,7 @@ const main: FrameRequestCallback = () => {
     requestAnimationFrame(main);
   }
 };
+bootstrapInputSystem(canvas, world);
 requestAnimationFrame(main);
 
 setTimeout(() => {
