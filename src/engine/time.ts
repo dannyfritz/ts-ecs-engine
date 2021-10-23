@@ -8,7 +8,15 @@ export type IWorldTime = {
     then: number,
   }
 };
-export const timeSystem = <T extends IWorldTime & IWorld>(world: T): T => {
+export const createContextTime = (): IWorldTime["time"] => {
+  return {
+    elapsed: 0,
+    updateTimeLeft: 0,
+    updateDelta: 16 / 1000,
+    then: performance.now() / 1000,
+  };
+};
+export const STime = <T extends IWorldTime & IWorld>(world: T): T => {
   const { time } = world;
   const now = performance.now() / 1000;
   const delta = now - time.then;

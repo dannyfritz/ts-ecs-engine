@@ -14,17 +14,28 @@ import {
   mat2d, vec2,
 } from 'gl-matrix';
 import {
-  Renderer,
-} from 'pixi.js';
-import { audioSystem, createSource, getSourceId, IWorldAudio } from './audio';
+  createContextAudio,
+  createContextRenderer2d,
+  createContextTime,
+  createSource,
+  createSprite,
+  CSource,
+  CSprite,
+  CTransform2d,
+  getSourceId,
+  getSpriteId,
+  IWorldAudio,
+  IWorldRenderer2d,
+  IWorldTime,
+  SAudio,
+  SDraw,
+  STime,
+} from './engine';
 import imgBunny from './bunny.png';
-import { CSource, CSprite, CTransform2d } from './components';
 import sndJump from './jump.wav';
-import { createSprite, drawSystem, getSpriteId, IWorldRenderer } from './renderer2d';
 import './style.css'
-import { IWorldTime, timeSystem } from './time';
 
-const element = document.querySelector<HTMLDivElement>('#app')!;
+const element = document.querySelector<HTMLElement>('#app')!;
 element.innerHTML = `<canvas tabindex='1'></canvas>`;
 const canvas = document.querySelector<HTMLCanvasElement>('canvas')!;
 
@@ -36,33 +47,10 @@ const CGravity = defineComponent();
 export const CAction = defineComponent({ action: Types.ui16 });
 
 /* WORLD & CONFIG */
-const world = createWorld() as IWorld & IWorldTime & IWorldRenderer & IWorldAudio;
-world.time = {
-  elapsed: 0,
-  updateTimeLeft: 0,
-  updateDelta: 16 / 1000,
-  then: performance.now() / 1000,
-};
-world.renderer2d = {
-  renderer: new Renderer({
-    clearBeforeRender: false,
-    view: canvas,
-    width: 600,
-    height: 400,
-  }),
-  camera: {},
-  sprites: {
-    idToSprite: {},
-    pathToId: {},
-  },
-};
-world.audio = {
-  context: new AudioContext(),
-  sources: {
-    idToSource: {},
-    pathToId: {},
-  },
-};
+const world = createWorld() as IWorld & IWorldTime & IWorldRenderer2d & IWorldAudio;
+world.time = createContextTime();
+world.renderer2d = createContextRenderer2d(canvas, vec2.fromValues(600, 400));
+world.audio = createContextAudio();
 const ACTIONS = Object.freeze({
   JUMP: 0,
 });
@@ -90,11 +78,11 @@ for (let i = 0; i <= 100; i++) {
 }
 
 /* SYSTEMS */
-const movementQuery = defineQuery([CTransform2d, CVelocity2d]);
-const movementSystem = <T extends IWorld & IWorldTime>(world: T): T => {
+const QMovement = defineQuery([CTransform2d, CVelocity2d]);
+const SMovement = <T extends IWorld & IWorldTime>(world: T): T => {
   const { time: { updateDelta: dt } } = world;
   const velocityScaled = vec2.create();
-  for (let eid of movementQuery(world)) {
+  for (let eid of QMovement(world)) {
     const localTransform = CTransform2d.local[eid];
     const velocity = CVelocity2d.vec2[eid];
     mat2d.translate(localTransform, localTransform, vec2.scale(velocityScaled, velocity, dt));
@@ -110,20 +98,20 @@ const movementSystem = <T extends IWorld & IWorldTime>(world: T): T => {
   return world
 }
 
-const gravityQuery = defineQuery([CGravity, CVelocity2d]);
-const gravitySystem = <T extends IWorld & IWorldTime>(world: T): T => {
+const QGravity = defineQuery([CGravity, CVelocity2d]);
+const SGravity = <T extends IWorld & IWorldTime>(world: T): T => {
   const { time: { updateDelta: dt } } = world;
-  for (let eid of gravityQuery(world)) {
+  for (let eid of QGravity(world)) {
     const velocity = CVelocity2d.vec2[eid];
     velocity[1] += 100 * dt;
   }
   return world
 }
 
-const actionQuery = defineQuery([CAction]);
-const actionEnter = enterQuery(actionQuery);
-const actionToSourceSystem = <T extends IWorld & IWorldAudio>(world: T): T => {
-  for (const eid of actionEnter(world)) {
+const QAction = defineQuery([CAction]);
+const QActionEnter = enterQuery(QAction);
+const SActionToSource = <T extends IWorld & IWorldAudio>(world: T): T => {
+  for (const eid of QActionEnter(world)) {
     if (CAction.action[eid] === ACTIONS.JUMP) {
       const newEid = addEntity(world);
       addComponent(world, CSource, newEid);
@@ -133,8 +121,8 @@ const actionToSourceSystem = <T extends IWorld & IWorldAudio>(world: T): T => {
   return world;
 }
 
-const actionDeleteSystem = <T extends IWorld>(world: T): T => {
-  for (const eid of actionQuery(world)) {
+const SActionDelete = <T extends IWorld>(world: T): T => {
+  for (const eid of QAction(world)) {
     removeEntity(world, eid);
   }
   return world;
@@ -149,26 +137,26 @@ canvas.addEventListener('keydown', (event) => {
   }
 });
 
-const update = pipe(
-  actionToSourceSystem,
-  gravitySystem,
-  movementSystem,
-  actionDeleteSystem,
+const SUpdate = pipe(
+  SActionToSource,
+  SGravity,
+  SMovement,
+  SActionDelete,
 )
-const render = pipe(
-  audioSystem,
-  drawSystem,
+const SRender = pipe(
+  SAudio,
+  SDraw,
 )
 
 /* LOOP */
 let alive = true;
 const main: FrameRequestCallback = () => {
-  timeSystem(world);
+  STime(world);
   while (world.time.updateTimeLeft >= world.time.updateDelta) {
-    update(world);
+    SUpdate(world);
     world.time.updateTimeLeft -= world.time.updateDelta;
   }
-  render(world);
+  SRender(world);
   if (alive) {
     requestAnimationFrame(main);
   }

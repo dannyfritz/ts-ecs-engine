@@ -10,11 +10,20 @@ export type IWorldAudio = {
     },
   }
 };
-const sourceQuery = defineQuery([CSource]);
-const newSourceQuery = enterQuery(sourceQuery);
-export const audioSystem = <T extends IWorld & IWorldAudio>(world: T): T => {
+export const createContextAudio = (): IWorldAudio["audio"] => {
+  return {
+    context: new AudioContext(),
+    sources: {
+      idToSource: {},
+      pathToId: {},
+    },
+  };
+};
+const QSource = defineQuery([CSource]);
+const QNewSource = enterQuery(QSource);
+export const SAudio = <T extends IWorld & IWorldAudio>(world: T): T => {
   const { audio: { context: audioContext, sources: { idToSource } }} = world;
-  for (let eid of newSourceQuery(world)) {
+  for (let eid of QNewSource(world)) {
     const sourceId = CSource.sourceId[eid];
     const audioBuffer = idToSource[sourceId];
     const bufferSource = audioContext.createBufferSource();
