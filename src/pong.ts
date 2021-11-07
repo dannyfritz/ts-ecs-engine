@@ -19,6 +19,7 @@ import {
   createContextTime,
   createSource,
   createSprite,
+  CShape,
   CSource,
   CSprite,
   CTransform2d,
@@ -29,21 +30,22 @@ import {
   IWorldTime,
   SAudio,
   SDraw,
+  SHAPES,
   STime,
 } from './engine';
+import { getCanvas, start } from './engine/domHelpers';
 import imgBunny from './bunny.png';
 import sndJump from './jump.wav';
 import './style.css'
 
-const element = document.querySelector<HTMLElement>('#app')!;
-element.innerHTML = `<canvas tabindex='1'></canvas>`;
-const canvas = document.querySelector<HTMLCanvasElement>('canvas')!;
+
+const canvas = getCanvas('#app');
 
 /* COMPONENTS */
 const CVelocity2d = defineComponent({
   vec2: [Types.f32, 2],
 });
-const CGravity = defineComponent();
+const CPaddleTag = defineComponent();
 export const CAction = defineComponent({ action: Types.ui16 });
 
 /* WORLD & CONFIG */
@@ -61,22 +63,24 @@ const inputActions: Record<KeyboardEvent["code"], number> = {
 /* DATA  */
 await createSource(world, sndJump);
 await createSprite(world, imgBunny);
-for (let i = 0; i <= 100; i++) {
-  const entityId = addEntity(world);
-  addComponent(world, CTransform2d, entityId);
-  mat2d.identity(CTransform2d.local[entityId]);
-  const localTransform = CTransform2d.local[entityId];
-  localTransform[4] = Math.random() * 600;
-  localTransform[5] = Math.random() * 200 + 100;
-  addComponent(world, CVelocity2d, entityId);
-  const velocity = CVelocity2d.vec2[entityId];
-  velocity[0] = (Math.random() - 0.5) * 200;
-  velocity[1] = (Math.random() - 0.5) * 200;
-  addComponent(world, CGravity, entityId);
-  addComponent(world, CSprite, entityId);
-  CSprite.spriteId[entityId] = getSpriteId(world, imgBunny);
-}
-
+const paddleEntityId = addEntity(world);
+addComponent(world, CPaddleTag, paddleEntityId);
+addComponent(world, CTransform2d, paddleEntityId);
+mat2d.identity(CTransform2d.local[paddleEntityId]);
+const localTransform = CTransform2d.local[paddleEntityId];
+localTransform[4] = 50.0;
+localTransform[5] = 50.0;
+addComponent(world, CVelocity2d, paddleEntityId);
+const velocity = CVelocity2d.vec2[paddleEntityId];
+velocity[0] = 0;
+velocity[1] = 0;
+addComponent(world, CShape, paddleEntityId);
+CShape.type[paddleEntityId] = SHAPES.RECTANGLE;
+const paddleShapeData = CShape.data[paddleEntityId];
+paddleShapeData[0] = 0.0;
+paddleShapeData[1] = 0.0;
+paddleShapeData[2] = 100.0;
+paddleShapeData[3] = 25.0;
 /* SYSTEMS */
 const QMovement = defineQuery([CTransform2d, CVelocity2d]);
 const SMovement = <T extends IWorld & IWorldTime>(world: T): T => {
@@ -94,16 +98,6 @@ const SMovement = <T extends IWorld & IWorldTime>(world: T): T => {
     if (localTransform[5] >= (400 - 37)) {
       velocity[1] = -Math.abs(velocity[1]);
     }
-  }
-  return world
-}
-
-const QGravity = defineQuery([CGravity, CVelocity2d]);
-const SGravity = <T extends IWorld & IWorldTime>(world: T): T => {
-  const { time: { updateDelta: dt } } = world;
-  for (let eid of QGravity(world)) {
-    const velocity = CVelocity2d.vec2[eid];
-    velocity[1] += 100 * dt;
   }
   return world
 }
@@ -139,31 +133,13 @@ canvas.addEventListener('keydown', (event) => {
 
 const SUpdate = pipe(
   SActionToSource,
-  SGravity,
   SMovement,
   SActionDelete,
 )
+
 const SRender = pipe(
   SAudio,
   SDraw,
 )
 
-/* LOOP */
-let alive = true;
-const main: FrameRequestCallback = () => {
-  STime(world);
-  while (world.time.updateTimeLeft >= world.time.updateDelta) {
-    SUpdate(world);
-    world.time.updateTimeLeft -= world.time.updateDelta;
-  }
-  SRender(world);
-  if (alive) {
-    requestAnimationFrame(main);
-  }
-};
-requestAnimationFrame(main);
-
-setTimeout(() => {
-  console.log('stopping')
-  alive = false
-}, 10_000);
+start(world, STime, SUpdate, SRender);
