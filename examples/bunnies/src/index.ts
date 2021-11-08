@@ -1,4 +1,5 @@
 import {
+  mat2d, vec2,
   addComponent,
   addEntity,
   createWorld,
@@ -9,11 +10,6 @@ import {
   pipe,
   removeEntity,
   Types,
-} from 'bitecs';
-import {
-  mat2d, vec2,
-} from 'gl-matrix';
-import {
   createContextAudio,
   createContextRenderer2d,
   createContextTime,
@@ -30,11 +26,11 @@ import {
   SAudio,
   SDraw,
   STime,
-} from './engine';
-import imgBunny from './bunny.png';
-import sndJump from './jump.wav';
-import './style.css'
-import { getCanvas, start } from './engine/domHelpers';
+} from 'engine';
+import imgBunny from '../assets/bunny.png';
+import sndJump from '../assets/jump.wav';
+import '../assets/style.css'
+import { getCanvas, start } from 'domhelpers';
 
 
 const canvas = getCanvas('#app');

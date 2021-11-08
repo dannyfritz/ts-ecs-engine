@@ -1,0 +1,31 @@
+{
+  "name": "engine",
+  "version": "0.0.1",
+  "main": "lib/index.js",
+  "scripts": {
+    "build": "heft build --clean",
+    "build:watch": "heft build"
+  },
+  "devDependencies": {
+    "@rushstack/eslint-config": "^2.4.5",
+    "@rushstack/heft": "~0.42.2",
+    "@rushstack/heft-web-rig": "~0.4.31",
+    "@types/node": "~16.11.6",
+    "eslint": "^7.0.0",
+    "@types/offscreencanvas": "~2019.6.4"
+  },
+  "dependencies": {
+    "bitecs": "^0.3.23",
+    "gl-matrix": "^3.4.3",
+    "pixi.js": "6.2.0",
+    "@pixi/core": "6.2.0",
+    "@pixi/display": "6.2.0",
+    "@pixi/runner": "6.2.0",
+    "@pixi/ticker": "6.2.0",
+    "@pixi/settings": "6.2.0",
+    "@pixi/sprite": "6.2.0",
+    "@pixi/utils": "6.2.0",
+    "@pixi/math": "6.2.0",
+    "@pixi/constants": "6.2.0"
+  }
+}
