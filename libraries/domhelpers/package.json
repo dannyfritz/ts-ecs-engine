@@ -23,7 +23,5 @@
 		"engine": "workspace:*"
 	},
 	"dependencies": {
-		"bitecs": "^0.3.23",
-		"engine": "workspace:*"
 	}
 }

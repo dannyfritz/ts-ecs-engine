@@ -93,14 +93,13 @@ importers:
       engine: workspace:*
       esbuild: ^0.13.14
       typescript: ^4.0.0
-    dependencies:
-      bitecs: 0.3.33
-      engine: link:../engine
     devDependencies:
       '@infra/eslint-config-web': link:../../infra/eslint-config-web
       '@infra/ts-config-web': link:../../infra/ts-config-web
       '@types/offscreencanvas': 2019.6.4
+      bitecs: 0.3.33
       chokidar-cli: 3.0.0
+      engine: link:../engine
       esbuild: 0.13.14
       typescript: 4.5.2
 
@@ -3185,7 +3184,6 @@ packages:
 
   /bitecs/0.3.33:
     resolution: {integrity: sha512-IIvSZ8sMdwLjX+lVjWB0G/Unf1Op/GQ9/TCalI1pWq0vkwEPiZni9XYIsnvhEWs+tI8O3bPD64ApBZzjgUnGRA==}
-    dev: false
 
   /bl/4.1.0:
     resolution: {integrity: sha512-1W07cM9gS6DcLperZfFSj+bWLtaPGSOHWhPiGzXmvVJbRLdG82sH/Kn8EtW1VqWVA54AKf2h5k5BbnIbwF3h6w==}
