@@ -1,4 +1,5 @@
-import { IWorld } from "bitecs";
+import type { IWorld } from "bitecs";
+import type { IWorldRenderer2d, IWorldTime, STime } from "engine";
 
 export const getCanvas = (querySelector: string): HTMLCanvasElement => {
 	const element = document.querySelector<HTMLElement>(querySelector)!;
@@ -6,15 +7,15 @@ export const getCanvas = (querySelector: string): HTMLCanvasElement => {
 	return document.querySelector<HTMLCanvasElement>('canvas')!
 }
 
-export const start = (world: IWorld, STime: (world: IWorld) => IWorld, SUpdate: (world: IWorld) => IWorld, SRender: (world: IWorld) => IWorld) => {
+export const start = (world: IWorld & IWorldTime & IWorldRenderer2d, sTime: typeof STime, sUpdate: (world: IWorld) => IWorld, sRender: (world: IWorld) => IWorld) => {
 	let alive = true;
 	const main: FrameRequestCallback = () => {
-		STime(world);
+		sTime(world);
 		while (world.time.updateTimeLeft >= world.time.updateDelta) {
-			SUpdate(world);
+			sUpdate(world);
 			world.time.updateTimeLeft -= world.time.updateDelta;
 		}
-		SRender(world);
+		sRender(world);
 		if (alive) {
 			requestAnimationFrame(main);
 		}

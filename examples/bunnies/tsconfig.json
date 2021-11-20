@@ -1,8 +1,3 @@
 {
-  "extends": "./node_modules/@rushstack/heft-web-rig/profiles/library/tsconfig-base.json",
-  "compilerOptions": {
-    "downlevelIteration": true,
-	  "lib": ["ES2020", "DOM"],
-    "types": ["webpack-env"]
-  }
+	"extends": "@infra/ts-config-web/tsconfig.json"
 }

@@ -1,19 +1,29 @@
 {
-  "name": "domhelpers",
-  "version": "0.0.1",
-  "main": "lib/index.js",
-  "scripts": {
-    "build": "heft build --clean",
-    "build:watch": "heft build"
-  },
-  "devDependencies": {
-    "@rushstack/eslint-config": "^2.4.5",
-    "@rushstack/heft": "~0.42.2",
-    "@rushstack/heft-web-rig": "~0.4.31",
-    "@types/node": "~16.11.6",
-    "typescript": "~4.4.4"
-  },
-  "dependencies": {
-    "bitecs": "^0.3.23"
-  }
+	"name": "domhelpers",
+	"version": "0.0.1",
+	"type": "module",
+	"module": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"scripts": {
+		"build": "pnpm build:types && pnpm build:esbuild",
+		"build:types": "tsc --project ./tsconfig.json",
+		"build:esbuild": "esbuild ./src/** --platform=node --target=es2020 --sourcemap --outdir=./dist",
+		"build:watch": "chokidar \"src/*.ts\" -c \"pnpm run build\"",
+		"clean": "rm -rf dist",
+		"lint": "eslint . --color"
+	},
+	"devDependencies": {
+		"@infra/eslint-config-web": "workspace:*",
+		"@infra/ts-config-web": "workspace:*",
+		"@types/offscreencanvas": "^2019",
+		"chokidar-cli": "^3.0.0",
+		"typescript": "^4.0.0",
+		"esbuild": "^0.13.14",
+		"bitecs": "^0.3.23",
+		"engine": "workspace:*"
+	},
+	"dependencies": {
+		"bitecs": "^0.3.23",
+		"engine": "workspace:*"
+	}
 }

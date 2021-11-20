@@ -1,27 +1,23 @@
 {
-  "name": "bunnies",
-  "version": "0.0.1",
-  "scripts": {
-    "build": "heft build --clean",
-    "start": "heft start"
-  },
-  "devDependencies": {
-    "@rushstack/eslint-config": "^2.4.5",
-    "@rushstack/heft": "~0.42.2",
-    "@rushstack/heft-web-rig": "~0.4.31",
-    "@rushstack/heft-webpack5-plugin": "~0.4.18",
-    "@types/node": "~16.11.6",
-    "eslint": "^7.0.0",
-    "@types/webpack-env": "1.16.3",
-    "typescript": "~4.4.4",
-    "html-webpack-plugin": "~5.5.0",
-    "webpack": "~5.64.0",
-    "css-loader": "~6.5.1",
-    "style-loader": "~3.3.1",
-    "source-map-loader": "~3.0.0"
-  },
-  "dependencies": {
-    "domhelpers": "^0.0.1",
-    "engine": "^0.0.1"
-  }
+	"name": "bunnies",
+	"version": "0.0.1",
+	"browserslist": "> 0.5%, last 2 versions, not dead",
+	"scripts": {
+		"build": "parcel build assets/index.html",
+		"build:watch": "parcel serve assets/index.html"
+	},
+	"devDependencies": {
+		"@infra/eslint-config-web": "workspace:^",
+		"@infra/jest-config": "workspace:^",
+		"@infra/ts-config-web": "workspace:^",
+		"@types/react": "^17.0.34",
+		"@types/react-dom": "^17.0.11",
+		"eslint": "^8.2.0",
+		"parcel": "^2.0.1",
+		"typescript": "^4.4.4"
+	},
+	"dependencies": {
+		"domhelpers": "^0.0.1",
+		"engine": "^0.0.1"
+	}
 }

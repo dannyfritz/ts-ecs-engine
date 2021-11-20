@@ -1,7 +1,9 @@
 {
-  "extends": "./node_modules/@rushstack/heft-web-rig/profiles/library/tsconfig-base.json",
-  "compilerOptions": {
-    "downlevelIteration": true,
-	  "lib": ["ES2020", "DOM"],
-  }
+	"extends": "@infra/ts-config-web/tsconfig.json",
+	"compilerOptions": {
+		"outDir": "./dist",
+	},
+	"include": [
+		"src/**.ts",
+	],
 }

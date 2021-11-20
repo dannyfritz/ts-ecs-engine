@@ -1,0 +1,8 @@
+{
+	"name": "@infra/ts-config-web",
+	"private": true,
+	"version": "1.0.0",
+	"devDependencies": {
+		"@tsconfig/vite-react": "^1.0.0"
+	}
+}

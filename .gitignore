@@ -58,16 +58,6 @@ jspm_packages/
 # OS X temporary files
 .DS_Store
 
-# Rush temporary files
-deploy
-common/autoinstallers/*/.npmrc
-common/temp
-**/.rush
-temp
-.rush
-
-# Heft
-.heft
-lib
-lib-commonjs
-examples/*/temp
+# build temporary files
+dist
+.parcel-cache
