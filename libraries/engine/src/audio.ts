@@ -43,7 +43,7 @@ export const createSource = async (world: IWorldAudio, path: string): Promise<vo
   const response = await fetch(path)
   const id = nextSourceId++;
   const buffer = await response.arrayBuffer();
-  const decodedBuffer = await world.audio.context.decodeAudioData(buffer); 
+  const decodedBuffer = await world.audio.context.decodeAudioData(buffer);
   sources.pathToId[path] = id;
   sources.idToSource[id] = decodedBuffer;
 }

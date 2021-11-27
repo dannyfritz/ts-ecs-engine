@@ -1,0 +1,14 @@
+{
+	"name": "wono",
+	"type": "module",
+	"version": "0.0.1",
+	"bin": {
+		"wono": "bin/wono.js"
+	},
+	"dependencies": {
+		"chokidar": "3.5.2",
+		"read-pkg-up": "9.0.0",
+		"@pnpm/plugin-commands-script-runners": "^4.5.2",
+		"@pnpm/logger": "4.0.0"
+	}
+}
